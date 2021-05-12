@@ -5,7 +5,7 @@
     DATA(lt_messages) = VALUE bapiret2_tab(  ).
     REFRESH et_data.
 * Проверка полномочий
-*    check_authority( ).
+    check_authority( ).
 
 * Блок с настройками
     ls_settings-criteria-zzsrm2_plng_year = is_range-zzsrm2_plng_year.
@@ -33,15 +33,6 @@
 * Отчет формируется на данных каждой строки РПЗ для которой значение в поле
     DATA(lt_status_zp) = VALUE tt_zp_text( ( zzsrm2_status_zp_txt = 'Опубликовано') ( zzsrm2_status_zp_txt = 'Утверждено') ).
     lt_rpz_lines = FILTER zisrm2_purch_ind_bl( lt_common IN lt_status_zp WHERE zzsrm2_status_zp_txt = zzsrm2_status_zp_txt ).
-*--> mamerezhkin 23.03.2021
-    "DELETE lt_rpz_lines WHERE NOT zzsrm2_status_pm IN is_range-zzsrm2_status_pm.
-    IF is_range-zzsrm2_status_pm IS INITIAL.
-      DATA(lr_status_pm) = VALUE zisrm2_status_pm_range( option = 'EQ' sign = 'E' ( low = 'В работе') ( low = 'Завершено') ).
-      DELETE lt_rpz_lines WHERE zzsrm2_status_pm IN lr_status_pm.
-    ELSE.
-      DELETE lt_rpz_lines WHERE NOT zzsrm2_status_pm IN is_range-zzsrm2_status_pm.
-    ENDIF.
-*<-- mamerezhkin 23.03.2021
     DELETE lt_rpz_lines WHERE NOT subtype IN is_range-zzsrm2_subtype.
     IF lt_rpz_lines IS INITIAL.
       APPEND VALUE #( type = 'E' id = 'ZSRM2_REP' number = '017' ) TO lt_messages.
