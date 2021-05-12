@@ -87,27 +87,6 @@
         FOR GROUPS value_bid OF <ls_zp> IN lt_zp
       GROUP BY <ls_zp>-zp_guid WITHOUT MEMBERS ( value_bid ) ).
       ls_uniq_values-zzsrm2_bid_number = lines( ls_values-bid_num ).
-*--> mamerezhkin 23.03.2021
-      DATA lt_zp_guid TYPE TABLE OF bbp_guid.
-      lt_zp_guid = ls_values-bid_num.
-      SELECT object_id
-        INTO TABLE @DATA(lt_object_id)
-        FROM crmd_orderadm_h
-        FOR ALL ENTRIES IN @lt_zp_guid
-        WHERE guid = @lt_zp_guid-table_line.
-      SORT lt_object_id BY object_id.
-      DELETE ADJACENT DUPLICATES FROM lt_object_id.
-      CONCATENATE LINES OF lt_object_id INTO ls_uniq_values-zzsrm2_bid_numbers SEPARATED BY ', '.
-
-*     Номер строки РПЗ
-      ls_values-srpz_num = VALUE #(
-      FOR GROUPS srpz_num OF <ls_one_bl> IN lt_one_bl
-        GROUP BY <ls_one_bl>-zzsrm2_number_int WITHOUT MEMBERS ( srpz_num ) ).
-      DELETE ls_values-srpz_num WHERE table_line IS INITIAL.
-      SORT ls_values-srpz_num.
-      DELETE ADJACENT DUPLICATES FROM ls_values-srpz_num.
-      CONCATENATE LINES OF ls_values-srpz_num INTO ls_uniq_values-zzsrm2_number_int SEPARATED BY ', '.
-*<-- mamerezhkin 23.03.2021
 * Статус
       ls_values-status_pm = VALUE #(
       FOR GROUPS value_pm OF <ls_one_bl> IN lt_one_bl
