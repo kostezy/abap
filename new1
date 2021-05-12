@@ -1,0 +1,82 @@
+  METHOD search.
+
+    DATA(lt_rpz_lines) = VALUE zisrm2_purch_ind_bl( ).
+    DATA(ls_settings) = VALUE zzsrm2_rep_base_settings( ).
+    DATA(lt_messages) = VALUE bapiret2_tab(  ).
+    REFRESH et_data.
+* Проверка полномочий
+*    check_authority( ).
+
+* Блок с настройками
+    ls_settings-criteria-zzsrm2_plng_year = is_range-zzsrm2_plng_year.
+    ls_settings-criteria-zzsrm2_customer_bp = is_range-zzsrm2_customer_bp.
+    ls_settings-criteria-zzsrm2_bus_bl = is_range-zzsrm2_bus_bl.
+    ls_settings-criteria-zzsrm2_bus_bl_tz = is_range-zzsrm2_bus_bl_tz.
+    ls_settings-criteria-zzsrm2_purch_org_bp = is_range-zzsrm2_purch_org_bp.
+    ls_settings-criteria-zzsrm2_purgr_organizer = is_range-zzsrm2_purgr_organizer.
+    ls_settings-criteria-zzsrm2_tech_custumer = is_range-zzsrm2_tcustomer_bp.
+    ls_settings-rep_type = zifsrm2_rep_bas_const=>mc_rep_types-rpz_rows.
+    "ls_settings-criteria-zzsrm2_subtype = is_range-zzsrm2_subtype.
+    ls_settings-criteria-max_rows = iv_max_num_results.
+
+    NEW zclsrm2_rep_base_alt(  )->get_common_srpz(
+      EXPORTING
+        is_settings = ls_settings
+      IMPORTING
+        et_messages      = DATA(lt_fpmgb_messages)
+        et_rpz_data      = DATA(lt_rpz_data)
+        et_stages_data   = DATA(lt_stages_data)
+      RECEIVING
+        rt_base_rpz      = DATA(lt_common)
+    ).
+
+* Отчет формируется на данных каждой строки РПЗ для которой значение в поле
+    DATA(lt_status_zp) = VALUE tt_zp_text( ( zzsrm2_status_zp_txt = 'Опубликовано') ( zzsrm2_status_zp_txt = 'Утверждено') ).
+    lt_rpz_lines = FILTER zisrm2_purch_ind_bl( lt_common IN lt_status_zp WHERE zzsrm2_status_zp_txt = zzsrm2_status_zp_txt ).
+*--> mamerezhkin 23.03.2021
+    "DELETE lt_rpz_lines WHERE NOT zzsrm2_status_pm IN is_range-zzsrm2_status_pm.
+    IF is_range-zzsrm2_status_pm IS INITIAL.
+      DATA(lr_status_pm) = VALUE zisrm2_status_pm_range( option = 'EQ' sign = 'E' ( low = 'В работе') ( low = 'Завершено') ).
+      DELETE lt_rpz_lines WHERE zzsrm2_status_pm IN lr_status_pm.
+    ELSE.
+      DELETE lt_rpz_lines WHERE NOT zzsrm2_status_pm IN is_range-zzsrm2_status_pm.
+    ENDIF.
+*<-- mamerezhkin 23.03.2021
+    DELETE lt_rpz_lines WHERE NOT subtype IN is_range-zzsrm2_subtype.
+    IF lt_rpz_lines IS INITIAL.
+      APPEND VALUE #( type = 'E' id = 'ZSRM2_REP' number = '017' ) TO lt_messages.
+      ct_messages = NEW zclsrm2_rep_bas_util( )->conv_bapimsg_to_fpmgb_search( lt_messages ).
+    ENDIF.
+
+* Выбираем разрез
+    DATA(lo_fpm) = cl_fpm_factory=>get_instance( ).
+    DATA(lv_config) = lo_fpm->get_runtime_info( )-config_id.
+
+    CASE lv_config.
+      WHEN mc_config-form_1.
+        form_year_in_bl( EXPORTING it_data = lt_rpz_lines
+                                   it_rpz_data = lt_rpz_data
+                                   it_stages_data = lt_stages_data
+                         IMPORTING et_result = et_data ).
+      WHEN mc_config-form_2.
+        form_bl_in_cust( EXPORTING it_data = lt_rpz_lines
+                                   it_rpz_data = lt_rpz_data
+                                   it_stages_data = lt_stages_data
+                         IMPORTING et_result = et_data ).
+      WHEN mc_config-form_3.
+        fill_trans_id(  EXPORTING is_range = is_range
+                        CHANGING ct_data = lt_rpz_lines ).
+        form_bl_in_type_trans( EXPORTING it_data = lt_rpz_lines
+                                         it_rpz_data = lt_rpz_data
+                                         it_stages_data = lt_stages_data
+                         	     IMPORTING et_result = et_data ).
+      WHEN mc_config-form_4.
+        fill_trans_id(  EXPORTING is_range = is_range
+                        CHANGING ct_data = lt_rpz_lines ).
+        form_type_trans_in_bl( EXPORTING it_data = lt_rpz_lines
+                                         it_rpz_data = lt_rpz_data
+                                         it_stages_data = lt_stages_data
+                         	     IMPORTING et_result = et_data ).
+    ENDCASE.
+
+  ENDMETHOD.
