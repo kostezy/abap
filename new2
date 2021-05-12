@@ -1,0 +1,208 @@
+  METHOD form_bl_in_cust.
+    DATA(ls_uniq_values) = VALUE tys_uniq_str( ).
+    DATA(lt_uniq_data) = VALUE tt_unique_string( ).
+
+    DATA(lv_sum_offer_rep) = REDUCE zesrm2_sum_offer_rub( INIT n = VALUE zesrm2_sum_offer_rub( )
+                                                                   FOR wa IN it_data
+                                                                   NEXT n = n + wa-zzsrm2_sum_offer_rub ).
+
+* Находим конкуренцию
+    DATA(lt_key_guid) = VALUE tt_key_guid( FOR <ls_zp> IN it_rpz_data
+                                           WHERE ( zp_guid IS NOT INITIAL AND
+                                                   ilot_guid IS NOT INITIAL )
+                                         ( hpur_guid = <ls_zp>-zp_guid
+                                           ilot_guid = <ls_zp>-ilot_guid ) ).
+    SORT lt_key_guid BY hpur_guid ilot_guid.
+    DELETE ADJACENT DUPLICATES FROM lt_key_guid COMPARING hpur_guid ilot_guid.
+* Получим количество предложений по каждому лоту
+    get_competition( EXPORTING it_key_guid = lt_key_guid
+                     IMPORTING et_quan = DATA(lt_quan) ).
+* Краткие наименования партнеров
+    get_parn( EXPORTING it_data = it_data
+              IMPORTING et_principal = DATA(lt_principal)
+                        et_tcustomer = DATA(lt_tcustomer) ).
+* Находим уникальные лоты по всем строкам рпз, которые удовлетворяют нашим условиям
+    DATA(lv_lines_count) = CONV zesrm2_share_ilot( lines( it_data ) ).
+    DATA(lv_test) = VALUE i( ).
+    LOOP AT it_data INTO DATA(ls_srpz)
+      GROUP BY ( zzsrm2_plng_year = ls_srpz-zzsrm2_plng_year
+                 zzsrm2_bus_bl_txt = ls_srpz-zzsrm2_bus_bl_txt
+                 zzsrm2_principal_txt = ls_srpz-zzsrm2_principal_txt
+                  )
+      REFERENCE INTO DATA(group_srpz).
+      DATA(ls_values) = VALUE tys_values( ).
+      DATA(lt_one_bl) = VALUE zisrm2_purch_ind_bl( ).
+
+* Группируем по бизнес-блоку
+* 1 ББ - 1 строка в отчете
+      LOOP AT GROUP group_srpz ASSIGNING FIELD-SYMBOL(<ls_srpz>).
+        APPEND <ls_srpz> TO lt_one_bl.
+      ENDLOOP.
+* Организатор закупки
+      ls_values-purc_org = VALUE #(
+      FOR GROUPS value_org OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_purch_org_nam WITHOUT MEMBERS ( value_org ) ).
+      DELETE ls_values-purc_org WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-purc_org INTO ls_uniq_values-zzsrm2_purch_org_nam SEPARATED BY ', '.
+* Бизнес-Блок Тех.Заказчика
+      ls_values-bb_tch = VALUE #(
+      FOR GROUPS value_bb_tch OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_bus_bl_tz_txt WITHOUT MEMBERS ( value_bb_tch ) ).
+      DELETE ls_values-bb_tch WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-bb_tch INTO ls_uniq_values-zzsrm2_bus_bl_tz_txt SEPARATED BY ', '.
+* Номер Лота ЗП
+      ls_values-num_lot = VALUE #(
+      FOR GROUPS value_num_lot OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_lot_no WITHOUT MEMBERS ( value_num_lot ) ).
+      DELETE ls_values-num_lot WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-num_lot INTO ls_uniq_values-zzsrm2_lot_no SEPARATED BY ', '.
+* Ответственный за закупки
+      ls_values-spozd_unit = VALUE #(
+      FOR GROUPS value_spozd OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_spozd_unit WITHOUT MEMBERS ( value_spozd ) ).
+      DELETE ls_values-spozd_unit WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-spozd_unit INTO ls_uniq_values-zzsrm2_spozd_unit SEPARATED BY ', '.
+
+* Тех. заказчик
+      ls_values-tcustomer = VALUE #(
+      FOR GROUPS value_tcustomer OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_tcustomer_number WITHOUT MEMBERS ( value_tcustomer ) ).
+      DELETE ls_values-tcustomer WHERE table_line IS INITIAL.
+      DATA(lt_r_partn) = VALUE tt_r_partn( FOR <ls_partn> IN  ls_values-tcustomer ( sign = 'I' option = 'EQ' low = <ls_partn> ) ).
+      IF lt_r_partn IS NOT INITIAL.
+        ls_values-tcustomer  = VALUE #( FOR <ls_tcust> IN lt_tcustomer WHERE ( objid IN lt_r_partn )
+                                                                         ( <ls_tcust>-name_org1 )  ).
+        CONCATENATE LINES OF ls_values-tcustomer INTO ls_uniq_values-zzsrm2_tcustomer_txt SEPARATED BY ', '.
+      ENDIF.
+* Способ закупки (конкурентный/не конкурентный)
+      ls_values-subtype = VALUE #(
+      FOR GROUPS value_subtype OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_subtype_txt WITHOUT MEMBERS ( value_subtype ) ).
+      DELETE ls_values-subtype WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-subtype INTO ls_uniq_values-zzsrm2_subtype_txt SEPARATED BY ', '.
+
+* Количество ЗП
+      DATA(lt_zp) = FILTER tt_rpz_data( it_rpz_data IN lt_one_bl WHERE guid_h = zzsrm2_srpz_guid ).
+      ls_values-bid_num = VALUE #(
+        FOR GROUPS value_bid OF <ls_zp> IN lt_zp
+      GROUP BY <ls_zp>-zp_guid WITHOUT MEMBERS ( value_bid ) ).
+      ls_uniq_values-zzsrm2_bid_number = lines( ls_values-bid_num ).
+*--> mamerezhkin 23.03.2021
+      DATA lt_zp_guid TYPE TABLE OF bbp_guid.
+      lt_zp_guid = ls_values-bid_num.
+      SELECT object_id
+        INTO TABLE @DATA(lt_object_id)
+        FROM crmd_orderadm_h
+        FOR ALL ENTRIES IN @lt_zp_guid
+        WHERE guid = @lt_zp_guid-table_line.
+      SORT lt_object_id BY object_id.
+      DELETE ADJACENT DUPLICATES FROM lt_object_id.
+      CONCATENATE LINES OF lt_object_id INTO ls_uniq_values-zzsrm2_bid_numbers SEPARATED BY ', '.
+
+*     Номер строки РПЗ
+      ls_values-srpz_num = VALUE #(
+      FOR GROUPS srpz_num OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_number_int WITHOUT MEMBERS ( srpz_num ) ).
+      DELETE ls_values-srpz_num WHERE table_line IS INITIAL.
+      SORT ls_values-srpz_num.
+      DELETE ADJACENT DUPLICATES FROM ls_values-srpz_num.
+      CONCATENATE LINES OF ls_values-srpz_num INTO ls_uniq_values-zzsrm2_number_int SEPARATED BY ', '.
+*<-- mamerezhkin 23.03.2021
+* Статус
+      ls_values-status_pm = VALUE #(
+      FOR GROUPS value_pm OF <ls_one_bl> IN lt_one_bl
+        GROUP BY <ls_one_bl>-zzsrm2_status_pm WITHOUT MEMBERS ( value_pm ) ).
+      DELETE ls_values-status_pm WHERE table_line IS INITIAL.
+      CONCATENATE LINES OF ls_values-status_pm INTO ls_uniq_values-zzsrm2_status_pm SEPARATED BY ', '.
+* НМЦ с НДС ЗП (рубли)
+      ls_uniq_values-zzsrm2_price_vat_tot_rub = REDUCE zesrm2_price_vat_tot_rub( INIT x = VALUE zesrm2_price_vat_tot_rub( )
+                                                                FOR wa IN lt_one_bl
+                                                                NEXT x = x + wa-zzsrm2_price_vat_tot_rub ).
+* НМЦ с НДС разыгранные позиции ЗП (рубли)
+      ls_uniq_values-zzsrm2_info_nmc_res_rub = REDUCE zesrm2_info_nmc_res_rub( INIT y = VALUE zesrm2_info_nmc_res_rub( )
+                                                                FOR wa IN lt_one_bl
+                                                                NEXT y = y + wa-zzsrm2_info_nmc_res_rub ).
+* Сумма закупки (рубли)
+      ls_uniq_values-zzsrm2_sum_offer_rub = REDUCE zesrm2_sum_offer_rub( INIT z = VALUE zesrm2_sum_offer_rub( )
+                                                                FOR wa IN lt_one_bl
+                                                                NEXT z = z + wa-zzsrm2_sum_offer_rub ).
+* Конкуренция на 1 лот (заявок заявлено)
+      DATA(lt_comp) = FILTER zclsrm2_rep_base_amdp=>tt_quan( lt_quan IN lt_zp USING KEY ilot_guid WHERE src_guid = ilot_guid ).
+      DELETE lt_comp WHERE count = 0.
+      DATA(lv_stage0) = REDUCE i( INIT m = 0
+                                  FOR ls IN lt_comp
+                                  NEXT m = m + ls-count ).
+      DATA(lt_count_lot) = VALUE zisrm2_guid( FOR GROUPS value_lot OF <ls_ilot> IN lt_zp
+                                              GROUP BY <ls_ilot>-ilot_guid WITHOUT MEMBERS ( value_lot ) ).
+      DATA(lv_count_lot) = lines( lt_count_lot ).
+      lt_count_lot = FILTER #(  lt_count_lot IN lt_comp WHERE table_line = src_guid ).
+      IF lv_count_lot <> 0.
+        ls_uniq_values-zzsrm2_quan_sup_stage0 = lv_stage0 / lines( lt_count_lot ).
+      ENDIF.
+* Доля закупок по количеству лотов, %
+      IF lv_lines_count <> 0.
+        ls_uniq_values-zzsrm2_share_lot = lines( lt_one_bl ) * 100 / lv_lines_count.
+        lv_test = lv_test + lines( lt_one_bl ).
+      ENDIF.
+* Конкуренция на 1 лот (заявок допущено)
+      DATA(lt_stage3) = FILTER zifsrm2_rep_base_amdp=>tt_sz_stages( it_stages_data IN lt_zp USING KEY ilot_guid WHERE lot_guid = ilot_guid  ).
+      DELETE lt_stage3 WHERE zzsrm2_name_sup_stage3  IS INITIAL.
+      DATA(lv_stage3) = REDUCE i( INIT p = 0
+                                  FOR ls_st IN lt_stage3
+                                  NEXT p = p + count_stage( iv_value = ls_st-zzsrm2_name_sup_stage3
+                                                            iv_delimeter =  ', '
+                                                            iv_skip_empty = abap_true ) ).
+
+      IF lv_count_lot <> 0.
+        ls_uniq_values-zzsrm2_quan_sup_stage3 = lv_stage3 / lines( lt_stage3 ).
+      ENDIF.
+* Краткое наименование партнеров
+      DATA(lv_principal) = VALUE #( lt_principal[  objid = lt_one_bl[ 1 ]-zzsrm2_principal_number ]-name_org1 OPTIONAL ).
+
+      INSERT VALUE #( zzsrm2_plng_year = group_srpz->zzsrm2_plng_year
+                      zzsrm2_bus_bl_txt = group_srpz->zzsrm2_bus_bl_txt
+                      zzsrm2_bus_bl_tz_txt = ls_uniq_values-zzsrm2_bus_bl_tz_txt
+                      zzsrm2_principal_txt = group_srpz->zzsrm2_principal_txt
+                      zzsrm2_purch_org_nam = ls_uniq_values-zzsrm2_purch_org_nam
+                      zzsrm2_tcustomer_txt = ls_uniq_values-zzsrm2_tcustomer_txt
+                      zzsrm2_spozd_unit = ls_uniq_values-zzsrm2_spozd_unit
+                      zzsrm2_subtype_txt = ls_uniq_values-zzsrm2_subtype_txt
+                      zzsrm2_bid_number  = ls_uniq_values-zzsrm2_bid_number
+                      zzsrm2_bid_numbers  = ls_uniq_values-zzsrm2_bid_numbers " mamerezhkin 23.03.2021
+                      zzsrm2_number_int  = ls_uniq_values-zzsrm2_number_int " mamerezhkin 23.03.2021
+                      zzsrm2_price_vat_tot_rub = ls_uniq_values-zzsrm2_price_vat_tot_rub
+                      zzsrm2_info_nmc_res_rub = ls_uniq_values-zzsrm2_info_nmc_res_rub
+                      zzsrm2_sum_offer_rub = ls_uniq_values-zzsrm2_sum_offer_rub
+                      zzsrm2_nmc_deviation_perc = calc_dev( ls_uniq_values )
+                      zzsrm2_sahre_summ = calc_sahre( is_data_for_sahre = ls_uniq_values iv_sum_offer_rep = lv_sum_offer_rep )
+                      zzsrm2_quan_sup_stage0 = COND zesrm2_quan_sup_stage( WHEN ls_uniq_values-zzsrm2_quan_sup_stage0 < 1
+                                   AND ls_uniq_values-zzsrm2_quan_sup_stage0 > 0 THEN 1
+                                   ELSE ls_uniq_values-zzsrm2_quan_sup_stage0  )
+*                      zzsrm2_quan_sup_stage0 = COND zesrm2_quan_sup_stage0( WHEN ls_uniq_values-zzsrm2_quan_sup_stage0 > 1 THEN ls_uniq_values-zzsrm2_quan_sup_stage0 ELSE 1 )
+                      zzsrm2_share_lot = ls_uniq_values-zzsrm2_share_lot
+                      zzsrm2_quan_sup_stage3 = COND zesrm2_quan_sup_stage( WHEN ls_uniq_values-zzsrm2_quan_sup_stage3 < 1
+                                   AND ls_uniq_values-zzsrm2_quan_sup_stage3 > 0 THEN 1  ELSE ls_uniq_values-zzsrm2_quan_sup_stage3 )
+*                      zzsrm2_quan_sup_stage3 = COND zesrm2_quan_sup_stage3( WHEN ls_uniq_values-zzsrm2_quan_sup_stage3 > 1 THEN ls_uniq_values-zzsrm2_quan_sup_stage3 ELSE 1 )
+                      zzsrm2_status_pm = ls_uniq_values-zzsrm2_status_pm
+                      zzsrm2_lot_no = ls_uniq_values-zzsrm2_lot_no
+                      zzsrm2_quan_lot_no = lv_count_lot
+                      zzsrm2_principal_short = lv_principal ) INTO TABLE lt_uniq_data.
+
+      CLEAR: ls_uniq_values.
+
+      APPEND INITIAL LINE TO et_result ASSIGNING FIELD-SYMBOL(<ls_result>).
+      <ls_result>-zzsrm2_plng_year = group_srpz->zzsrm2_plng_year.
+      <ls_result>-zzsrm2_bus_bl_txt = group_srpz->zzsrm2_bus_bl_txt.
+      <ls_result>-zzsrm2_principal_txt = group_srpz->zzsrm2_principal_txt.
+    ENDLOOP.
+
+    LOOP AT et_result ASSIGNING <ls_result>.
+      READ TABLE lt_uniq_data ASSIGNING FIELD-SYMBOL(<ls_un_str>)
+        WITH KEY zzsrm2_bus_bl_txt    = <ls_result>-zzsrm2_bus_bl_txt
+                 zzsrm2_principal_txt = <ls_result>-zzsrm2_principal_txt
+                 zzsrm2_plng_year     = <ls_result>-zzsrm2_plng_year. " mamerezhkin 23.03.2021.
+      IF sy-subrc = 0.
+        <ls_result> = CORRESPONDING #( <ls_un_str> ).
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.

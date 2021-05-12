@@ -1,0 +1,801 @@
+CLASS zclsrm2_mon_rep_amdp DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_amdp_marker_hdb .
+    TYPES:BEGIN OF ts_min_cost
+          ,quan_guid TYPE bbp_guid
+          ,ilot_guid TYPE bbp_guid
+          ,ilot_i_guid TYPE bbp_guid
+          ,quan_i TYPE bbp_guid
+          ,con_guid TYPE bbp_guid
+          ,price TYPE bbp_pdigp-price
+          ,price_unit TYPE bbp_pdigp-price_unit
+          ,quantity TYPE bbp_pdigp-quantity
+          ,currency TYPE bbp_pdigp-currency
+          ,zzsrm2_vat_code TYPE bbp_pdisc-zzsrm2_vat_code
+          ,zzsrm2_com_submit_dt TYPE bbp_pdhsc-zzsrm2_com_submit_dt
+          ,src_quan TYPE bbp_guid
+          ,
+          END OF ts_min_cost.
+
+    TYPES: tt_min_cost TYPE SORTED TABLE OF ts_min_cost
+            WITH NON-UNIQUE KEY ilot_guid ilot_i_guid zzsrm2_com_submit_dt
+            WITH NON-UNIQUE SORTED KEY src_quan COMPONENTS src_quan ilot_i_guid.
+
+    TYPES:
+      BEGIN OF ts_ilot_data.
+        INCLUDE TYPE zvsrm2_crepbalot.
+    TYPES:
+      zzsrm2_asses_date_appr TYPE ztsrm2_erqevt_c-zzsrm2_asses_date_appr,
+      zp_guid                TYPE bbp_guid,
+      END OF ts_ilot_data .
+    TYPES:
+      tt_ilot_data   TYPE SORTED TABLE OF ts_ilot_data
+                     WITH NON-UNIQUE KEY pos_guid
+                     WITH NON-UNIQUE SORTED KEY zp_guid COMPONENTS zp_guid
+                     WITH NON-UNIQUE SORTED KEY guid COMPONENTS guid .
+
+    TYPES:
+      BEGIN OF ts_object_id
+      ,object_id TYPE crmt_object_id_db
+      ,
+      END OF ts_object_id.
+    TYPES: tt_object_id TYPE SORTED TABLE OF ts_object_id WITH NON-UNIQUE KEY object_id.
+    TYPES:
+      BEGIN OF ts_quan_lot
+            ,guid_quan TYPE bbp_guid
+            ,guid_src TYPE bbp_guid
+            ,partner_no TYPE crmd_partner-partner_no
+            ,des_type TYPE bbp_pds_header-process_type
+            ,zzsrm2_com_submit_dt TYPE bbp_pdhsc-zzsrm2_com_submit_dt
+            ,created_at TYPE crmd_orderadm_h-created_at
+            ,zzsrm2_cost_nds TYPE bbp_pdhsc-zzsrm2_cost_nds
+            ,currency TYPE bbp_pdhgp-currency
+    ,
+    END OF ts_quan_lot .
+    TYPES:
+      tt_quan_lot TYPE SORTED TABLE OF ts_quan_lot
+             WITH NON-UNIQUE KEY guid_src partner_no zzsrm2_com_submit_dt created_at.
+    TYPES:
+     BEGIN OF ts_all_quan
+          ,guid_quan TYPE bbp_guid
+          ,guid_src TYPE bbp_guid
+          ,guid_hpur TYPE bbp_guid
+          ,zzsrm2_inn_post_sup TYPE dfkkbptaxnum-taxnum
+          ,partner TYPE bu_partner
+          ,partner_no TYPE crmt_partner_no
+          ,
+     END OF ts_all_quan.
+    TYPES: tt_all_quan TYPE SORTED TABLE OF ts_all_quan WITH NON-UNIQUE KEY guid_quan.
+    TYPES:
+      BEGIN OF ts_inn_member
+       ,inn_sup TYPE bptaxnum
+       ,
+      END OF ts_inn_member.
+    TYPES:
+     tt_inn_member TYPE STANDARD TABLE OF ts_inn_member WITH EMPTY KEY.
+
+    TYPES:
+     BEGIN OF ts_quan_i
+          ,parent TYPE bbp_guid
+          ,guid TYPE bbp_guid
+          ,quantity TYPE bbp_mng
+          ,price TYPE bbp_price
+          ,price_unit TYPE epein
+          ,zzsrm2_vat_code TYPE /srmpp/vat_code
+          ,
+     END OF ts_quan_i.
+    TYPES: tt_quan_i TYPE SORTED TABLE OF ts_quan_i WITH NON-UNIQUE KEY parent guid.
+    TYPES:
+     BEGIN OF ts_gross_amount
+      ,hpur_guid TYPE bbp_guid
+      ,zzsrm2_gross_amount TYPE zesrm2_zp_pr_vat_tot
+      ,currency TYPE waers
+      ,
+     END OF ts_gross_amount .
+    TYPES:
+    tt_gross_amount TYPE SORTED TABLE OF ts_gross_amount WITH NON-UNIQUE KEY hpur_guid .
+
+    TYPES:
+     BEGIN OF ts_lot_pr
+      ,ilot_guid TYPE bbp_guid
+      ,zzsrm2_gross_amount TYPE zesrm2_zp_pr_vat_tot
+      ,currency TYPE waers
+      ,
+     END OF ts_lot_pr.
+    TYPES:
+    tt_lot_pr TYPE SORTED TABLE OF ts_lot_pr WITH NON-UNIQUE KEY ilot_guid .
+
+    TYPES:
+     BEGIN OF ts_sum_pozl
+      ,guid TYPE bbp_guid
+      ,zzsrm2_mtr_deliv_sapl TYPE zesrm2_mtr_deliv_sapl
+      ,src_guid TYPE bbp_guid
+      ,currency TYPE bbp_pdhgp-currency
+      ,
+     END OF ts_sum_pozl.
+    TYPES: tt_sum_pozl TYPE SORTED TABLE OF ts_sum_pozl WITH NON-UNIQUE KEY src_guid.
+
+    TYPES:BEGIN OF ts_key_guid
+          ,hpur_guid TYPE bbp_guid
+          ,ilot_guid TYPE bbp_guid
+          ,
+          END OF ts_key_guid
+          .
+    TYPES:tt_key_guid TYPE STANDARD TABLE OF ts_key_guid
+              WITH EMPTY KEY.
+    TYPES:
+          BEGIN OF ts_quan
+          ,src_guid TYPE bbp_guid
+          ,count TYPE i
+          ,
+          END OF ts_quan
+          .
+    TYPES: tt_quan TYPE SORTED TABLE OF ts_quan WITH NON-UNIQUE KEY src_guid.
+
+    TYPES: tt_qapos TYPE bbpt_guid.
+
+    TYPES:
+      BEGIN OF ts_qapos_i,
+        qapo   TYPE bbp_guid,
+        qapo_i TYPE bbp_guid,
+        lot_i  TYPE bbp_guid,
+      END OF ts_qapos_i.
+    TYPES: tt_qapos_i TYPE SORTED TABLE OF ts_qapos_i WITH NON-UNIQUE KEY qapo.
+
+    TYPES:
+      BEGIN OF ts_inn_stages,
+        zzsrm2_ilot_guid TYPE bbp_guid,
+        partner_guid     TYPE bu_partner_guid,
+      END OF ts_inn_stages.
+
+    TYPES: tt_inn_stages TYPE SORTED TABLE OF ts_inn_stages WITH NON-UNIQUE KEY zzsrm2_ilot_guid.
+    TYPES:
+      BEGIN OF ts_name_inn,
+        zzsrm2_ilot_guid TYPE bbp_guid,
+        inn              TYPE bptaxnum,
+        name             TYPE string,
+      END OF ts_name_inn.
+    TYPES: tt_name_inn TYPE SORTED TABLE OF ts_name_inn WITH NON-UNIQUE KEY zzsrm2_ilot_guid inn.
+    TYPES:
+      BEGIN OF ts_i_ppr_lot,
+        src_guid TYPE bbp_guid,
+        lot_guid TYPE bbp_guid,
+        pos_guid TYPE bbp_guid,
+      END OF ts_i_ppr_lot.
+    TYPES: tt_i_ppr_lot TYPE SORTED TABLE OF ts_i_ppr_lot WITH NON-UNIQUE KEY src_guid.
+    TYPES:
+      BEGIN OF ts_rpz_data,
+        zzsrm2_srpz_guid TYPE bbp_guid,
+        zzsrm2_hpur_guid TYPE bbp_guid,
+      END OF ts_rpz_data.
+    TYPES: tt_rpz_data TYPE SORTED TABLE OF ts_rpz_data WITH NON-UNIQUE KEY zzsrm2_srpz_guid.
+    TYPES:
+      BEGIN OF ts_fill_part,
+        tline type hrt1002-tline,
+        objid type hrobjid,
+        doc_guid type crmt_object_guid,
+        partner_fct type crmt_partner_fct,
+      END OF ts_fill_part,
+      tt_fill_part TYPE SORTED TABLE OF ts_fill_part WITH NON-UNIQUE KEY doc_guid partner_fct.
+  types:
+    BEGIN OF ts_partners,
+        objid       TYPE zddl_docpart-objid,
+        doc_guid    TYPE zddl_docpart-doc_guid,
+        partner_fct TYPE zddl_docpart-partner_fct,
+      END OF ts_partners .
+  types:
+    BEGIN OF ts_keys_lot,
+        ilot_guid TYPE bbp_guid,
+        ilot_i_guid TYPE bbp_guid,
+    END OF ts_keys_lot,
+    tt_keys_lot TYPE HASHED TABLE OF ts_keys_lot WITH UNIQUE KEY ilot_i_guid.
+  types:
+    tt_partners TYPE STANDARD TABLE OF ts_partners WITH NON-UNIQUE KEY objid
+                                                   WITH NON-UNIQUE SORTED KEY doc_guid COMPONENTS doc_guid
+                                                   WITH NON-UNIQUE SORTED KEY partner_fct COMPONENTS partner_fct .
+  types:
+    BEGIN OF ts_stages,
+    guid_hi TYPE CRMT_OBJECT_GUID,
+    guid_set TYPE CRMT_OBJECT_GUID,
+    zzsrm2_quot_guid TYPE BBP_GUID,
+    partner_id TYPE BU_PARTNER,
+    name TYPE string,
+    inn TYPE string,
+  END OF ts_stages,
+  tt_stages TYPE STANDARD TABLE OF ts_stages WITH NON-UNIQUE KEY guid_set
+                                           WITH NON-UNIQUE SORTED KEY zzsrm2_quot_guid COMPONENTS zzsrm2_quot_guid.
+    CLASS-METHODS get_gross_amount
+      IMPORTING VALUE(iv_client)       TYPE mandt
+                VALUE(it_hpur_guid)    TYPE bbpt_guid
+      EXPORTING VALUE(et_gross_amount) TYPE tt_gross_amount.
+
+    CLASS-METHODS get_lot_pr
+      IMPORTING VALUE(iv_client)    TYPE mandt
+                VALUE(it_ilot_guid) TYPE bbpt_guid
+      EXPORTING VALUE(et_lot_pr)    TYPE tt_lot_pr.
+
+    CLASS-METHODS get_all_quan
+      IMPORTING VALUE(iv_client)    TYPE mandt
+                VALUE(it_inn)       TYPE tt_inn_member
+      EXPORTING VALUE(et_all_quan)  TYPE tt_all_quan
+                VALUE(et_object_id) TYPE tt_object_id.
+
+    CLASS-METHODS get_items_qapo
+      IMPORTING VALUE(iv_client)  TYPE mandt
+                VALUE(it_qapos)   TYPE tt_qapos
+      EXPORTING VALUE(et_qapos_i) TYPE tt_qapos_i.
+
+    CLASS-METHODS get_sum_pozl
+      IMPORTING VALUE(iv_client)    TYPE mandt
+                VALUE(it_ilot_data) TYPE tt_i_ppr_lot
+      EXPORTING VALUE(et_sum_pozl)  TYPE tt_sum_pozl.
+
+    CLASS-METHODS get_quan_lot
+      IMPORTING
+        VALUE(iv_client)   TYPE mandt
+        VALUE(it_links)    TYPE zifsrm2_rep_base_amdp=>tt_links
+      EXPORTING
+        VALUE(et_quan_lot) TYPE tt_quan_lot
+        VALUE(et_quan_i)   TYPE tt_quan_i
+      .
+    CLASS-METHODS get_quan_sup
+      IMPORTING VALUE(iv_client)   TYPE mandt
+                VALUE(it_key_guid) TYPE tt_key_guid
+      EXPORTING VALUE(et_quan)     TYPE tt_quan.
+
+    CLASS-METHODS get_min_cost
+      IMPORTING VALUE(iv_client)   TYPE mandt
+                VALUE(it_qapo_i)   TYPE zifsrm2_rep_base_alt=>tt_ilot_i_links
+      EXPORTING VALUE(et_min_cost) TYPE tt_min_cost
+                VALUE(et_min_date) TYPE tt_min_cost.
+
+    CLASS-METHODS get_quan_sup_uncomp
+      IMPORTING VALUE(iv_client)   TYPE mandt
+                VALUE(it_key_guid) TYPE tt_key_guid
+      EXPORTING VALUE(et_quan)     TYPE tt_quan.
+
+    CLASS-METHODS get_inn_stages
+      IMPORTING VALUE(iv_client)     TYPE mandt
+                VALUE(it_inn_stages) TYPE tt_inn_stages
+      EXPORTING VALUE(et_name_inn)   TYPE tt_name_inn.
+    CLASS-METHODS get_partners
+      IMPORTING VALUE(iv_client)    TYPE mandt
+                VALUE(it_part)      TYPE tt_partners
+      EXPORTING VALUE(et_fill_part) TYPE tt_fill_part.
+    CLASS-METHODS fill_links
+     IMPORTING VALUE(iv_client)     TYPE mandt
+               VALUE(it_rep)        TYPE ZISRM2_BUSNSS_CLL
+               VALUE(it_hierachy)   TYPE ZCLSRM2_REP_BASE_AMDP=>tt_doc_hierachy
+     EXPORTING VALUE(et_i_links) TYPE tt_keys_lot.
+     CLASS-METHODS get_stages_data
+      IMPORTING VALUE(iv_client)    TYPE mandt
+                VALUE(it_key_guid)  TYPE tt_key_guid
+                VALUE(it_zmpp_data) TYPE ZIFSRM2_REP_BASE_AMDP=>TT_ZMPP_DATA
+     EXPORTING VALUE(et_stages) TYPE tt_stages.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zclsrm2_mon_rep_amdp IMPLEMENTATION.
+
+  METHOD get_all_quan
+        BY DATABASE PROCEDURE FOR HDB
+        LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+        USING bbp_pdhgp bbp_pdhsc crm_jest crmd_link crmd_partner but000 dfkkbptaxnum crmd_orderadm_h.
+
+    IF NOT is_empty(:it_inn) THEN
+lt_all_quan = SELECT pdhgp.guid as guid_quan,
+                     pdhgp.src_guid as guid_src,
+                     dfkkbptaxnum.taxnum,
+                     dfkkbptaxnum.partner,
+                     partner.partner_no
+                from bbp_pdhgp as pdhgp
+                inner join bbp_pdhsc as pdhsc
+                on pdhsc.guid = pdhgp.guid
+                inner join crm_jest as jest
+                on jest.objnr = pdhsc.guid
+                inner join crmd_link as link
+                on link.guid_hi = pdhgp.guid
+                inner join crmd_partner as partner
+                on partner.guid = link.guid_set
+                inner join but000
+                on but000.partner_guid = partner.partner_no
+                inner join dfkkbptaxnum
+                on dfkkbptaxnum.partner = but000.partner
+                where pdhsc.zzsrm2_quot_type = 'O'
+                and jest.stat in ( 'I1012','I9926' )
+                and inact <> 'X'
+                and link.objtype_hi = '05'
+                and link.objtype_set = '07'
+                and partner.partner_fct = '00000018'
+                and dfkkbptaxnum.taxtype = 'RU1'
+                and dfkkbptaxnum.taxnum in ( select inn_sup
+                                               from :it_inn )
+                ;
+                else
+lt_all_quan = select pdhgp.guid as guid_quan,
+                     pdhgp.src_guid as guid_src,
+                     dfkkbptaxnum.taxnum,
+                     dfkkbptaxnum.partner,
+                     partner.partner_no
+                from bbp_pdhgp as pdhgp
+                inner join bbp_pdhsc as pdhsc
+                on pdhsc.guid = pdhgp.guid
+                inner join crm_jest as jest
+                on jest.objnr = pdhsc.guid
+                inner join crmd_link as link
+                on link.guid_hi = pdhgp.guid
+                inner join crmd_partner as partner
+                on partner.guid = link.guid_set
+                inner join but000
+                on but000.partner_guid = partner.partner_no
+                inner join dfkkbptaxnum
+                on dfkkbptaxnum.partner = but000.partner
+                where pdhsc.zzsrm2_quot_type = 'O'
+                and jest.stat in ( 'I1012','I9926' )
+                and inact <> 'X'
+                and link.objtype_hi = '05'
+                and link.objtype_set = '07'
+                and partner.partner_fct = '00000018'
+                and dfkkbptaxnum.taxtype = 'RU1'
+                ;
+
+    END if;
+
+
+ et_all_quan = SELECT quan.guid_quan,
+                      quan.guid_src,
+                      pdhgp.src_guid as guid_hpur,
+                      quan.taxnum as zzsrm2_inn_post_sup,
+                      quan.partner,
+                      quan.partner_no
+                 from :lt_all_quan as quan
+                 inner join crmd_orderadm_h
+                 on crmd_orderadm_h.guid = quan.guid_src
+                 inner join bbp_pdhgp as pdhgp
+                 on pdhgp.guid = quan.guid_src
+                 where crmd_orderadm_h.process_type = 'ILOT'
+                 ;
+
+ et_object_id = SELECT DISTINCT object_id
+                  FROM crmd_orderadm_h
+                  INNER JOIN :et_all_quan AS quan
+                  ON crmd_orderadm_h.guid = quan.guid_hpur
+                  ;
+
+  endmethod.
+
+  METHOD get_items_qapo
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING crmd_orderadm_i bbp_pdigp .
+
+    et_qapos_i = select qapos.guid as qapo,
+                        crmd_orderadm_i.guid as qapo_i,
+                        bbp_pdigp.src_guid as lot_i
+                 from crmd_orderadm_i
+                 inner join :it_qapos as qapos
+                 on crmd_orderadm_i.header = qapos.guid
+                 inner join bbp_pdigp
+                 on bbp_pdigp.guid = crmd_orderadm_i.guid
+                ;
+
+
+  endmethod.
+
+  METHOD get_quan_lot
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING bbp_pdhgp bbp_pdhsc crm_jest crmd_link crmd_partner crmd_orderadm_h
+             crmd_orderadm_i bbp_pdigp bbp_pdisc.
+
+    lt_quan = select pdhgp.guid as guid_quan,
+                     des_guid.src_guid,
+                     des_guid.des_type,
+                     pdhgp.currency
+                    from bbp_pdhgp as pdhgp
+                    inner join
+                    ( select src_guid,
+                             des_guid,
+                             des_type
+                      from :it_links) as des_guid
+                      ON pdhgp.src_guid = des_guid.des_guid;
+
+   et_quan_lot = select quan.guid_quan,
+                        quan.src_guid as guid_src,
+                        partner.partner_no,
+                        quan.des_type,
+                        pdhsc.zzsrm2_com_submit_dt,
+                        orderadm_h.created_at,
+                        pdhsc.zzsrm2_cost_nds,
+                        quan.currency
+                from :lt_quan as quan
+                inner join bbp_pdhsc as pdhsc
+                on pdhsc.guid = quan.guid_quan
+                inner join crmd_orderadm_h as orderadm_h
+                on orderadm_h.guid = quan.guid_quan
+                inner join crm_jest as jest
+                on jest.objnr = pdhsc.guid
+                inner join crmd_link as link
+                on link.guid_hi = quan.guid_quan
+                inner join crmd_partner as partner
+                on partner.guid = link.guid_set
+                where pdhsc.zzsrm2_quot_type = 'O'
+                  and pdhsc.zzsrm2_com_submit_dt <> 0
+                  and jest.stat in ( 'I1012','I9926' )
+                  and inact <> 'X'
+                  and link.objtype_hi = '05'
+                  and link.objtype_set = '07'
+                  and partner.partner_fct = '00000018';
+
+    et_quan_i = SELECT order_i.parent,
+                       order_i.guid,
+                       pdigp.quantity,
+                       pdigp.price,
+                       pdigp.price_unit,
+                       pdisc.zzsrm2_vat_code
+                  from crmd_orderadm_i as order_i
+                  inner join :et_quan_lot as quan_lot
+                  on order_i.parent = quan_lot.guid_quan
+                  inner join bbp_pdigp as pdigp
+                  on pdigp.guid = order_i.guid
+                  inner join bbp_pdisc as pdisc
+                  on pdisc.guid = order_i.guid
+                  where quan_lot.zzsrm2_cost_nds = 0
+                  ;
+
+
+  ENDMETHOD.
+
+  METHOD  get_min_cost
+        BY DATABASE PROCEDURE FOR HDB
+        LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+        USING crmd_orderadm_i bbp_pdhsc crm_jest bbp_pdhgp bbp_pdigp bbp_pdisc.
+
+    lt_min_cost = select  crmd_orderadm_i.header as quan_guid,
+                          qapo_i.ilot_guid,
+                          qapo_i.ilot_i_guid,
+                          qapo_i.des_guid as quan_i,
+                          qapo_i.con_guid,
+                          bbp_pdigp.price,
+                          bbp_pdigp.price_unit,
+                          bbp_pdigp.quantity,
+                          bbp_pdigp.currency,
+                          bbp_pdisc.zzsrm2_vat_code,
+                          bbp_pdhsc.zzsrm2_com_submit_dt
+                    from crmd_orderadm_i
+                    inner join :it_qapo_i as qapo_i
+                    on qapo_i.des_guid = crmd_orderadm_i.guid
+                    inner join bbp_pdhsc
+                    on bbp_pdhsc.guid = crmd_orderadm_i.header
+                    inner join crm_jest as jest
+                    on jest.objnr = crmd_orderadm_i.header
+                    inner join bbp_pdigp
+                    on bbp_pdigp.guid = qapo_i.des_guid
+                    inner join bbp_pdisc
+                    on bbp_pdisc.guid = qapo_i.des_guid
+                    where bbp_pdhsc.zzsrm2_com_submit_dt <> 0
+                      and bbp_pdhsc.zzsrm2_quot_type = 'O'
+                      AND jest.stat in ( 'I1012','I9926' )
+                    order by qapo_i.ilot_guid,
+                             qapo_i.ilot_i_guid,
+                             bbp_pdhsc.zzsrm2_com_submit_dt
+                    ;
+
+   et_min_cost = select min_cost.*,
+                        bbp_pdhgp.src_guid as src_quan
+                 from :lt_min_cost as min_cost
+                 inner join bbp_pdhgp
+                 on bbp_pdhgp.guid = min_cost.quan_guid
+                 ;
+   lt_min = select distinct *
+            from ( select quan_guid,
+                          ilot_i_guid,
+                          dense_rank(  ) over( partition by ilot_i_guid
+                                                      order by quan_guid, zzsrm2_com_submit_dt ) as rnk,
+                                                      zzsrm2_com_submit_dt
+                          from :et_min_cost )
+                          WHERE rnk = 1
+                          ;
+    et_min_date = select t.*
+                    from :et_min_cost as t
+                    INNER JOIN :lt_min as m
+                    ON m.quan_guid = t.quan_guid
+                    AND m.ilot_i_guid = t.ilot_i_guid;
+
+  endmethod.
+  METHOD get_gross_amount
+        BY DATABASE PROCEDURE FOR HDB
+        LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+        USING bbp_pdhsc bbp_pdhgp.
+
+    et_gross_amount = select hpur.guid as hpur_guid,
+                             bbp_pdhsc.zzsrm2_gross_amount,
+                             bbp_pdhgp.currency
+                        from bbp_pdhsc
+                        inner join :it_hpur_guid as hpur
+                        on bbp_pdhsc.guid = hpur.guid
+                        inner join bbp_pdhgp
+                        on bbp_pdhgp.guid = hpur.guid
+        ;
+
+  endmethod.
+  METHOD get_lot_pr
+        BY DATABASE PROCEDURE FOR HDB
+        LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+        USING bbp_pdhsc bbp_pdhgp.
+
+    et_lot_pr = select bbp_pdhsc.guid as ilot_guid,
+                       bbp_pdhsc.zzsrm2_gross_amount,
+                       bbp_pdhgp.currency
+                  from bbp_pdhsc
+                  inner join :it_ilot_guid
+                  on bbp_pdhsc.guid = :it_ilot_guid.guid
+                  inner join bbp_pdhgp
+                  on bbp_pdhgp.guid = :it_ilot_guid.guid
+        ;
+
+  endmethod.
+
+  METHOD get_sum_pozl
+        BY DATABASE PROCEDURE FOR HDB
+        LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+        USING bbp_pdisc bbp_pdhgp.
+
+    et_sum_pozl = select bbp_pdisc.guid,
+                         bbp_pdisc.zzsrm2_mtr_deliv_sapl,
+                         ilot.src_guid,
+                         bbp_pdhgp.currency
+*ilot.currency
+                  from bbp_pdisc
+                  inner join :it_ilot_data as ilot
+                  on bbp_pdisc.guid = ilot.pos_guid
+                  inner join bbp_pdhgp
+                  on bbp_pdhgp.guid = ilot.lot_guid
+                  ;
+
+  endmethod.
+
+  METHOD get_quan_sup_uncomp
+      BY DATABASE PROCEDURE FOR HDB
+      LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+      USING bbp_pdhgp tvarvc bbp_pdhsc crm_jest crmd_orderadm_h ZDDLSRM2_PARTN_H.
+
+    it_key_guid = select links.hpur_guid, links.ilot_guid
+              from bbp_pdhgp as pdhgp
+              inner join
+                  ( select distinct hpur_guid, ilot_guid
+                      from :it_key_guid ) as links
+                  on pdhgp.guid = links.hpur_guid
+              inner join crmd_orderadm_h as orderadm_h
+                  on links.hpur_guid = orderadm_h.guid and
+                     orderadm_h.client = :iv_client
+              WHERE pdhgp.client = :iv_client AND
+                    pdhgp.subtype not in (
+                      select low
+                          from tvarvc
+                          where name = 'ZSRM2_SUBTYPE_UNCOMP' and
+                                mandt = :iv_client
+                    )
+                    ;
+    IF is_empty(:it_key_guid) THEN
+    return;
+    END if;
+
+    lt_quan = SELECT pdhgp.guid, pdhgp.src_guid
+                from bbp_pdhgp as pdhgp
+                inner join
+                ( select ilot_guid
+                from :it_key_guid) AS ilot
+                ON pdhgp.src_guid = ilot.ilot_guid
+                ;
+
+    et_quan = select quan.src_guid, count(distinct partn.PARTNER_ID) AS count
+                from :lt_quan as quan
+                inner join bbp_pdhsc as pdhsc
+                ON pdhsc.guid = quan.guid
+                inner join crm_jest as jest
+                on jest.objnr = pdhsc.guid
+                inner join crmd_orderadm_h as orderadm_h
+                on orderadm_h.guid = quan.guid
+                inner join ZDDLSRM2_PARTN_H as partn
+                on partn.guid_hi = quan.guid
+                where pdhsc.zzsrm2_quot_type = 'O'
+                  and orderadm_h.process_type = 'QAPO'
+                  and jest.stat in ( 'I1012','I9926' )
+                  and inact <> 'X'
+                  and partn.PARTNER_FCT = '00000018'
+                  and partn.DISABLED = ''
+                group by quan.src_guid;
+
+
+  endmethod.
+
+  METHOD get_inn_stages
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING zddlsrm2_partn_h dfkkbptaxnum but000.
+
+    lt_name_inn = select zddlsrm2_partn_h.partner_id,
+                         stages.zzsrm2_ilot_guid,
+                         dfkkbptaxnum.taxnum,
+                         concat( but000.name_org1, concat( but000.name_org2, concat( but000.name_org3, but000.name_org4 ) ) ) as name
+                    from zddlsrm2_partn_h
+                    inner join dfkkbptaxnum
+                    on dfkkbptaxnum.partner = zddlsrm2_partn_h.partner_id
+                    inner join :it_inn_stages as stages
+                    on zddlsrm2_partn_h.guid_hi = stages.partner_guid
+                    inner join but000
+                    on but000.partner = zddlsrm2_partn_h.partner_id
+                    where zddlsrm2_partn_h.partner_fct = '00000018'
+                      AND dfkkbptaxnum.taxtype = 'RU1';
+
+     et_name_inn =  SELECT zzsrm2_ilot_guid, taxnum AS inn, name
+                      FROM :lt_name_inn;
+
+  ENDMETHOD.
+
+  METHOD get_partners
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING hrp1002 hrt1002.
+
+    lt_tab = SELECT hrp.tabnr,
+                     hrp.endda,
+                     p.objid,
+                     p.doc_guid,
+                     p.partner_fct
+                FROM hrp1002 as hrp
+                INNER JOIN :it_part as p
+                ON hrp.objid = p.objid;
+    lt_tab_max =   SELECT DISTINCT *
+                 FROM ( SELECT tabnr,
+                               rank( ) over ( partition by doc_guid, partner_fct order BY endda desc) as rnk,
+                               endda,
+                               objid,
+                               doc_guid,
+                               partner_fct
+                          FROM :lt_tab )
+                 WHERE rnk = 1;
+     lt_fill_part = SELECT hrt.tline,
+                           m.*
+                      FROM hrt1002 as hrt
+                    INNER JOIN :lt_tab_max as m
+                    ON m.tabnr = hrt.tabnr;
+     et_fill_part = SELECT tline,
+                           objid,
+                           doc_guid,
+                           partner_fct
+                      FROM :lt_fill_part;
+
+  ENDMETHOD.
+
+  METHOD fill_links
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY.
+   et_i_links = SELECT DISTINCT r.zzsrm2_ilot_guid as ilot_guid,
+                                h.guid as ilot_i_guid
+                  FROM :it_hierachy AS h
+                  INNER JOIN :it_rep as r
+                  ON r.zzsrm2_ilot_guid_i = h.guid;
+
+ ENDMETHOD.
+  METHOD get_quan_sup
+       BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING bbp_pdhgp tvarvc bbp_pdhsc crm_jest crmd_orderadm_h ZDDLSRM2_PARTN_H.
+
+    it_key_guid = select links.hpur_guid, links.ilot_guid
+              from bbp_pdhgp as pdhgp
+              inner join
+                  ( select distinct hpur_guid, ilot_guid
+                      from :it_key_guid ) as links
+                  on pdhgp.guid = links.hpur_guid
+              inner join crmd_orderadm_h as orderadm_h
+                  on links.hpur_guid = orderadm_h.guid and
+                     orderadm_h.client = :iv_client
+              WHERE pdhgp.client = :iv_client AND
+                    pdhgp.subtype not in (
+                      select low
+                          from tvarvc
+                          where name = 'ZSRM2_SUBTYPE_UNCOMP' and
+                                mandt = :iv_client
+                    )
+                    ;
+
+    if is_empty(:it_key_guid) THEN
+    return;
+    END if;
+
+    lt_quan = SELECT pdhgp.guid, pdhgp.src_guid
+                from bbp_pdhgp as pdhgp
+                inner join
+                ( select ilot_guid
+                from :it_key_guid) AS ilot
+                ON pdhgp.src_guid = ilot.ilot_guid
+                ;
+
+    et_quan = select quan.src_guid, count(distinct partn.PARTNER_ID ) AS count
+                from :lt_quan as quan
+                inner join bbp_pdhsc as pdhsc
+                ON pdhsc.guid = quan.guid
+                inner join crm_jest as jest
+                on jest.objnr = pdhsc.guid
+                inner join crmd_orderadm_h as orderadm_h
+                on orderadm_h.guid = quan.guid
+                inner join ZDDLSRM2_PARTN_H as partn
+                on partn.guid_hi = quan.guid
+                where pdhsc.zzsrm2_quot_type = 'O'
+                  and orderadm_h.process_type = 'QAPO'
+                  and jest.stat in ( 'I1012','I9926' )
+                  and inact <> 'X'
+                  and partn.PARTNER_FCT = '00000018'
+                  and partn.DISABLED = ''
+                group by quan.src_guid;
+
+  endmethod.
+  METHOD get_stages_data
+         BY DATABASE PROCEDURE FOR HDB
+       LANGUAGE SQLSCRIPT OPTIONS READ-ONLY
+       USING crmd_link bbp_pdhcf bbp_pdhgp tvarvc  crmd_orderadm_h ZDDLSRM2_PARTN_H but000 DFKKBPTAXNUM.
+    it_key_guid = select links.hpur_guid, links.ilot_guid
+              from bbp_pdhgp as pdhgp
+              inner join
+                  ( select distinct hpur_guid, ilot_guid
+                      from :it_key_guid ) as links
+                  on pdhgp.guid = links.hpur_guid
+              inner join crmd_orderadm_h as orderadm_h
+                  on links.hpur_guid = orderadm_h.guid and
+                     orderadm_h.client = :iv_client
+              WHERE pdhgp.client = :iv_client AND
+                    pdhgp.subtype not in (
+                      select low
+                          from tvarvc
+                          where name = 'ZSRM2_SUBTYPE_UNCOMP' and
+                                mandt = :iv_client
+                    )
+                    ;
+    if is_empty(:it_key_guid) THEN
+    return;
+    END if;
+    lt_zmpp = SELECT zmpp.*
+                from :it_zmpp_data as zmpp
+                inner join :it_key_guid as key
+                on zmpp.src_guid = key.ilot_guid;
+   et_stages = select zmpp.src_guid as guid_hi,
+                     crmd_link.guid_hi AS guid_set,
+                     pdhcf.zzsrm2_quot_guid,
+                     partn.PARTNER_ID,
+                     concat( but000.name_org1, concat( but000.name_org2, concat( but000.name_org3, but000.name_org4 ) ) ) as name,
+                     df.TAXNUM as inn
+                from crmd_link
+                inner join :lt_zmpp as zmpp
+                on crmd_link.guid_hi = zmpp.guid
+                inner join bbp_pdhcf as pdhcf
+                on pdhcf.set_guid = crmd_link.guid_set
+                inner join ZDDLSRM2_PARTN_H as partn
+                on partn.guid_hi = pdhcf.zzsrm2_quot_guid
+                inner join but000
+                on but000.partner = partn.partner_id
+                inner join DFKKBPTAXNUM as df
+                on df.partner = partn.partner_id
+                where crmd_link.objtype_hi = '05'
+                  AND crmd_link.objtype_set = '78'
+                  AND pdhcf.table_type = 'THZSB'
+                  AND (pdhcf.zzsrm2_qualif_sel = '2'
+                   OR pdhcf.zzsrm2_tech_sel = '2'
+                   OR pdhcf.zzsrm2_comm_sel = '2' )
+                  AND partn.PARTNER_FCT = '00000018'
+                  AND partn.disabled = ''
+                  AND df.TAXTYPE = 'RU1'
+                ;
+
+  ENDMETHOD.
+ENDCLASS.
